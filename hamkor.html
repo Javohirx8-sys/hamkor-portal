@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>turist24.uz — Hamkorlar paneli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<style>
+:root{
+  --bg:#f2f4f7;--white:#fff;--s2:#f0f2f5;
+  --border:#e8eaed;--text:#1a1a2e;--text2:#4a5568;--muted:#9aa5b4;
+  --green:#16a34a;--green-l:#dcfce7;--green-d:#15803d;
+  --orange:#ea580c;--orange-l:#fff7ed;
+  --red:#dc2626;--red-l:#fee2e2;
+  --r:20px;--r-sm:14px;
+  --sh:0 2px 16px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;}
+.wrap{max-width:480px;margin:0 auto;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column;}
+.topbar{padding:20px 18px;background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.topbar-title{font-size:16px;font-weight:800;}
+.topbar-title span{color:var(--green);}
+.logout-btn{font-size:12px;font-weight:700;color:var(--muted);background:none;border:none;cursor:pointer;}
+.content{flex:1;padding:20px 18px 40px;}
+
+/* ── AUTH EKRANI ── */
+.auth-card{background:var(--white);border-radius:var(--r);padding:24px 20px;box-shadow:var(--sh);margin-top:30px;}
+.auth-logo{font-size:40px;text-align:center;margin-bottom:8px;}
+.auth-title{font-size:18px;font-weight:800;text-align:center;margin-bottom:4px;}
+.auth-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:22px;}
+.tabs{display:flex;background:var(--s2);border-radius:12px;padding:4px;margin-bottom:20px;}
+.tab{flex:1;text-align:center;padding:9px;border-radius:9px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;}
+.tab.active{background:var(--white);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:12px;padding:11px 13px;font-family:inherit;font-size:14px;background:var(--s2);color:var(--text);}
+.field textarea{resize:vertical;min-height:70px;}
+.btn-primary{width:100%;background:var(--green);color:#fff;border:none;border-radius:12px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-top:6px;}
+.btn-primary:disabled{opacity:.6;}
+.err-box{background:var(--red-l);color:var(--red);font-size:12px;font-weight:700;padding:10px 12px;border-radius:10px;margin-bottom:14px;display:none;}
+.err-box.show{display:block;}
+
+/* ── STATUS BADGE ── */
+.status-card{background:var(--white);border-radius:var(--r);padding:22px 18px;box-shadow:var(--sh);text-align:center;margin-bottom:18px;}
+.status-badge{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:20px;font-size:13px;font-weight:800;margin-bottom:10px;}
+.status-badge.pending{background:var(--orange-l);color:var(--orange);}
+.status-badge.approved{background:var(--green-l);color:var(--green-d);}
+.status-badge.rejected{background:var(--red-l);color:var(--red);}
+.status-msg{font-size:13px;color:var(--text2);line-height:1.5;}
+
+/* ── FORMA ── */
+.form-card{background:var(--white);border-radius:var(--r);padding:20px 18px;box-shadow:var(--sh);margin-bottom:16px;}
+.form-title{font-size:15px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.img-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.img-thumb{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;}
+.img-thumb img{width:100%;height:100%;object-fit:cover;}
+.img-thumb button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;}
+.upload-label{display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:var(--s2);border:1px dashed var(--border);border-radius:10px;padding:9px 14px;cursor:pointer;font-size:12px;font-weight:700;color:var(--text2);}
+.upload-status{font-size:11px;color:var(--muted);margin-top:6px;}
+
+/* ── YANGILIKLAR ── */
+.news-item{background:var(--s2);border-radius:12px;padding:12px;margin-bottom:8px;}
+.news-item-title{font-size:13px;font-weight:800;margin-bottom:3px;}
+.news-item-text{font-size:12px;color:var(--text2);line-height:1.5;}
+.news-item-del{float:right;background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;font-weight:700;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;padding:11px 20px;border-radius:30px;font-size:13px;font-weight:700;opacity:0;transition:.3s;z-index:999;pointer-events:none;max-width:90%;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="topbar-title">turist24<span>.uz</span> — Hamkorlar</div>
+    <button class="logout-btn hidden" id="logout-btn" onclick="doLogout()">Chiqish</button>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══ AUTH EKRANI ═══ -->
+    <div id="auth-screen">
+      <div class="auth-card">
+        <div class="auth-logo">🏪</div>
+        <div class="auth-title">Xizmat ko'rsatuvchilar</div>
+        <div class="auth-sub">Choyxona, dacha, mehmonxona egasimisiz? Shu yerdan ro'yxatdan o'ting.</div>
+
+        <div class="tabs">
+          <div class="tab active" id="tab-login" onclick="switchAuthTab('login')">Kirish</div>
+          <div class="tab" id="tab-register" onclick="switchAuthTab('register')">Ro'yxatdan o'tish</div>
+        </div>
+
+        <div class="err-box" id="auth-err"></div>
+
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="auth-email" placeholder="misol@gmail.com">
+        </div>
+        <div class="field">
+          <label>Parol</label>
+          <input type="password" id="auth-pass" placeholder="Kamida 6 belgi">
+        </div>
+        <div class="field hidden" id="auth-name-field">
+          <label>Faoliyat nomi</label>
+          <input type="text" id="auth-bizname" placeholder="Masalan: Bahor Fasl Choyxonasi">
+        </div>
+
+        <button class="btn-primary" id="auth-submit-btn" onclick="submitAuth()">Kirish</button>
+      </div>
+    </div>
+
+    <!-- ═══ ASOSIY PANEL (kirgandan keyin) ═══ -->
+    <div id="main-screen" class="hidden">
+
+      <div class="status-card" id="status-card">
+        <div class="status-badge pending" id="status-badge">⏳ Yuklanmoqda...</div>
+        <div class="status-msg" id="status-msg"></div>
+      </div>
+
+      <!-- Profil to'ldirish/tahrirlash formasi -->
+      <div class="form-card" id="profile-form-card">
+        <div class="form-title">📋 Faoliyat ma'lumotlari</div>
+
+        <div class="field">
+          <label>Nomi</label>
+          <input type="text" id="biz-name" placeholder="Faoliyat nomi">
+        </div>
+        <div class="field">
+          <label>Turi</label>
+          <select id="biz-type">
+            <option value="choyxona">🍵 Choyxona</option>
+            <option value="dacha">🏡 Dacha</option>
+            <option value="mehmonxona">🏨 Mehmonxona</option>
+            <option value="restoran">🍽️ Restoran</option>
+            <option value="boshqa">📍 Boshqa</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tavsif (turistlarga nima haqida so'zlaysiz)</label>
+          <textarea id="biz-desc" placeholder="Xizmatlaringiz, xususiyatlaringiz haqida yozing..."></textarea>
+        </div>
+        <div class="field">
+          <label>Telefon raqami</label>
+          <input type="tel" id="biz-phone" placeholder="+998 90 123 45 67">
+        </div>
+        <div class="field">
+          <label>Manzil (lat, lng)</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="biz-lat" placeholder="Latitude" style="flex:1">
+            <input type="text" id="biz-lng" placeholder="Longitude" style="flex:1">
+          </div>
+          <button type="button" onclick="useMyLocation()" style="margin-top:8px;font-size:11px;font-weight:700;color:var(--green);background:none;border:none;cursor:pointer;">📍 Joriy joylashuvimni ishlatish</button>
+        </div>
+
+        <div class="field">
+          <label>Rasmlar</label>
+          <div class="img-row" id="biz-img-preview"></div>
+          <label class="upload-label">
+            📷 Rasm qo'shish
+            <input type="file" accept="image/*" multiple style="display:none" onchange="uploadBizImages(event)">
+          </label>
+          <div class="upload-status" id="img-upload-status"></div>
+        </div>
+
+        <div class="field">
+          <label>Video (ixtiyoriy — YouTube havolasi yoki fayl yuklash)</label>
+          <input type="text" id="biz-video-url" placeholder="https://youtube.com/... (ixtiyoriy)" style="margin-bottom:8px">
+          <label class="upload-label">
+            🎥 Video fayl yuklash
+            <input type="file" accept="video/*" style="display:none" onchange="uploadBizVideo(event)">
+          </label>
+          <div class="upload-status" id="video-upload-status"></div>
+        </div>
+
+        <button class="btn-primary" id="save-profile-btn" onclick="saveBusinessProfile()">✅ Saqlash va yuborish</button>
+      </div>
+
+      <!-- Yangiliklar (faqat tasdiqlangandan keyin) -->
+      <div class="form-card hidden" id="news-card">
+        <div class="form-title">📰 Yangiliklar (turistlarga ko'rinadi)</div>
+        <div id="news-list"></div>
+        <div class="field" style="margin-top:12px">
+          <label>Sarlavha</label>
+          <input type="text" id="news-title" placeholder="Masalan: Yangi taom qo'shildi">
+        </div>
+        <div class="field">
+          <label>Matn</label>
+          <textarea id="news-text" placeholder="Yangilik haqida yozing..."></textarea>
+        </div>
+        <button class="btn-primary" onclick="postNews()">📤 E'lon qilish</button>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const FB_CONFIG = {
+  apiKey: "AIzaSyCwhY9eF8gIO5Ew9MaYmzSbfKUs0wByOAM",
+  authDomain: "bek-bola.firebaseapp.com",
+  databaseURL: "https://bek-bola-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "bek-bola",
+  storageBucket: "bek-bola.firebasestorage.app",
+  messagingSenderId: "617804928629",
+  appId: "1:617804928629:web:4402d65810cf3d30810a3c"
+};
+firebase.initializeApp(FB_CONFIG);
+const auth = firebase.auth();
+const db = firebase.database();
+const storage = firebase.storage();
+
+let currentUid = null;
+let currentBizData = null;
+let bizImages = [];
+let bizVideoUrl = '';
+let authMode = 'login';
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+// ── AUTH TAB ALMASHTIRISH ──
+window.switchAuthTab = function(mode){
+  authMode = mode;
+  document.getElementById('tab-login').classList.toggle('active', mode==='login');
+  document.getElementById('tab-register').classList.toggle('active', mode==='register');
+  document.getElementById('auth-name-field').classList.toggle('hidden', mode==='login');
+  document.getElementById('auth-submit-btn').textContent = mode==='login' ? 'Kirish' : "Ro'yxatdan o'tish";
+  document.getElementById('auth-err').classList.remove('show');
+};
+
+window.submitAuth = function(){
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-pass').value;
+  const bizname = document.getElementById('auth-bizname').value.trim();
+  const errBox = document.getElementById('auth-err');
+  errBox.classList.remove('show');
+
+  if(!email || !pass){ errBox.textContent = 'Email va parolni kiriting'; errBox.classList.add('show'); return; }
+  if(authMode==='register' && !bizname){ errBox.textContent = "Faoliyat nomini kiriting"; errBox.classList.add('show'); return; }
+
+  const btn = document.getElementById('auth-submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>';
+
+  const done = () => { btn.disabled=false; btn.textContent = authMode==='login'?'Kirish':"Ro'yxatdan o'tish"; };
+
+  if(authMode === 'login'){
+    auth.signInWithEmailAndPassword(email, pass)
+      .catch(e => { errBox.textContent = authErrMsg(e); errBox.classList.add('show'); done(); });
+  } else {
+    auth.createUserWithEmailAndPassword(email, pass)
+      .then(cred => {
+        return db.ref('businesses/'+cred.user.uid).set({
+          ownerUid: cred.user.uid,
+          ownerEmail: email,
+          name: bizname,
+          type: 'choyxona',
+          desc: '', phone: '', lat: '', lng: '',
+          images: [], videoUrl: '',
+          status: 'draft',
+          createdAt: Date.now(), updatedAt: Date.now()
+        });
+      })
+      .catch(e => { errBox.textContent = authErrMsg(e); errBox.classList.add('show'); done(); });
+  }
+};
+
+function authErrMsg(e){
+  const map = {
+    'auth/invalid-email': "Email noto'g'ri formatda",
+    'auth/user-not-found': "Bunday foydalanuvchi topilmadi",
+    'auth/wrong-password': "Parol noto'g'ri",
+    'auth/email-already-in-use': "Bu email allaqachon ro'yxatdan o'tgan — 'Kirish' bo'limidan foydalaning",
+    'auth/weak-password': "Parol kamida 6 ta belgidan iborat bo'lishi kerak",
+    'auth/invalid-credential': "Email yoki parol noto'g'ri"
+  };
+  return map[e.code] || ('Xatolik: ' + e.message);
+}
+
+window.doLogout = function(){ auth.signOut(); };
+
+// ── AUTH HOLATINI KUZATISH ──
+auth.onAuthStateChanged(user => {
+  if(user){
+    currentUid = user.uid;
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    document.getElementById('logout-btn').classList.remove('hidden');
+    loadBusinessProfile();
+  } else {
+    currentUid = null;
+    document.getElementById('auth-screen').classList.remove('hidden');
+    document.getElementById('main-screen').classList.add('hidden');
+    document.getElementById('logout-btn').classList.add('hidden');
+  }
+});
+
+// ── PROFILNI YUKLASH ──
+function loadBusinessProfile(){
+  db.ref('businesses/'+currentUid).on('value', snap => {
+    const data = snap.val();
+    if(!data) return;
+    currentBizData = data;
+    renderStatus(data);
+    fillForm(data);
+    bizImages = data.images || [];
+    bizVideoUrl = data.videoUrl || '';
+    renderImgPreview();
+    if(data.status === 'approved'){
+      document.getElementById('news-card').classList.remove('hidden');
+      loadNews();
+    } else {
+      document.getElementById('news-card').classList.add('hidden');
+    }
+  });
+}
+
+function renderStatus(data){
+  const badge = document.getElementById('status-badge');
+  const msg = document.getElementById('status-msg');
+  if(data.status === 'approved'){
+    badge.className = 'status-badge approved';
+    badge.textContent = '✅ Tasdiqlangan';
+    msg.textContent = "Faoliyatingiz turist24.uz saytida foydalanuvchilarga ko'rinmoqda.";
+  } else if(data.status === 'pending'){
+    badge.className = 'status-badge pending';
+    badge.textContent = '⏳ Ko\u02bbrib chiqilmoqda';
+    msg.textContent = "Ma'lumotlaringiz admin tomonidan tekshirilmoqda. Odatda 1-2 kun ichida javob beriladi.";
+  } else if(data.status === 'rejected'){
+    badge.className = 'status-badge rejected';
+    badge.textContent = '❌ Rad etildi';
+    msg.textContent = data.rejectReason ? ('Sabab: ' + data.rejectReason) : "Ma'lumotlaringizni to'g'rilab, qayta yuboring.";
+  } else {
+    badge.className = 'status-badge pending';
+    badge.textContent = "📝 To'ldirilmagan";
+    msg.textContent = "Quyidagi formani to'ldirib, tasdiqlash uchun yuboring.";
+  }
+}
+
+function fillForm(data){
+  document.getElementById('biz-name').value = data.name || '';
+  document.getElementById('biz-type').value = data.type || 'choyxona';
+  document.getElementById('biz-desc').value = data.desc || '';
+  document.getElementById('biz-phone').value = data.phone || '';
+  document.getElementById('biz-lat').value = data.lat || '';
+  document.getElementById('biz-lng').value = data.lng || '';
+  document.getElementById('biz-video-url').value = data.videoUrl || '';
+}
+
+window.useMyLocation = function(){
+  if(!navigator.geolocation){ showToast('⚠️ Brauzeringiz joylashuvni qo\u02bbllamaydi'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    document.getElementById('biz-lat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('biz-lng').value = pos.coords.longitude.toFixed(6);
+    showToast('📍 Joylashuv olindi');
+  }, () => showToast('⚠️ Joylashuvni aniqlab bo\u02bblmadi'));
+};
+
+// ── RASM YUKLASH (Firebase Storage) ──
+window.uploadBizImages = function(event){
+  const files = Array.from(event.target.files);
+  const statusEl = document.getElementById('img-upload-status');
+  statusEl.textContent = `${files.length} ta rasm yuklanmoqda...`;
+  let done = 0;
+  files.forEach(file => {
+    if(file.size > 8*1024*1024){ showToast('⚠️ ' + file.name + ' 8MB dan katta'); done++; return; }
+    const ref = storage.ref('businesses/'+currentUid+'/img_'+Date.now()+'_'+file.name);
+    ref.put(file).then(snap => snap.ref.getDownloadURL()).then(url => {
+      bizImages.push(url);
+      done++;
+      renderImgPreview();
+      if(done === files.length) statusEl.textContent = `✅ ${bizImages.length} ta rasm`;
+    }).catch(e => { showToast('❌ Yuklashda xato: ' + e.message); done++; });
+  });
+};
+function renderImgPreview(){
+  const box = document.getElementById('biz-img-preview');
+  box.innerHTML = bizImages.map((url,i) => `
+    <div class="img-thumb"><img src="${url}"><button onclick="removeBizImage(${i})">✕</button></div>
+  `).join('');
+}
+window.removeBizImage = function(i){ bizImages.splice(i,1); renderImgPreview(); };
+
+// ── VIDEO YUKLASH ──
+window.uploadBizVideo = function(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  if(file.size > 50*1024*1024){ showToast('⚠️ Video 50MB dan katta bo\u02bblmasligi kerak'); return; }
+  const statusEl = document.getElementById('video-upload-status');
+  statusEl.textContent = 'Video yuklanmoqda... (biroz vaqt olishi mumkin)';
+  const ref = storage.ref('businesses/'+currentUid+'/video_'+Date.now()+'_'+file.name);
+  ref.put(file).then(snap => snap.ref.getDownloadURL()).then(url => {
+    bizVideoUrl = url;
+    document.getElementById('biz-video-url').value = url;
+    statusEl.textContent = '✅ Video yuklandi';
+  }).catch(e => { statusEl.textContent = ''; showToast('❌ Video yuklashda xato: ' + e.message); });
+};
+
+// ── PROFILNI SAQLASH ──
+window.saveBusinessProfile = function(){
+  const name = document.getElementById('biz-name').value.trim();
+  const type = document.getElementById('biz-type').value;
+  const desc = document.getElementById('biz-desc').value.trim();
+  const phone = document.getElementById('biz-phone').value.trim();
+  const lat = document.getElementById('biz-lat').value.trim();
+  const lng = document.getElementById('biz-lng').value.trim();
+  const videoUrl = document.getElementById('biz-video-url').value.trim() || bizVideoUrl;
+
+  if(!name){ showToast('⚠️ Nomini kiriting'); return; }
+  if(!desc){ showToast('⚠️ Tavsif kiriting'); return; }
+  if(!phone){ showToast('⚠️ Telefon raqamini kiriting'); return; }
+
+  const wasApproved = currentBizData && currentBizData.status === 'approved';
+
+  const data = {
+    ownerUid: currentUid,
+    ownerEmail: currentBizData ? currentBizData.ownerEmail : (auth.currentUser?.email || ''),
+    name, type, desc, phone, lat, lng,
+    images: bizImages, videoUrl,
+    status: 'pending',
+    createdAt: currentBizData?.createdAt || Date.now(),
+    updatedAt: Date.now()
+  };
+
+  db.ref('businesses/'+currentUid).set(data).then(() => {
+    showToast(wasApproved
+      ? '✅ Saqlandi — o\u02bbzgarishlar qayta tekshirishdan o\u02bbtadi'
+      : '✅ Yuborildi — admin tekshiruvini kuting');
+  }).catch(e => showToast('❌ Xato: ' + e.message));
+};
+
+// ── YANGILIKLAR ──
+function loadNews(){
+  db.ref('businesses/'+currentUid+'/news').on('value', snap => {
+    const data = snap.val() || {};
+    const list = document.getElementById('news-list');
+    const entries = Object.entries(data).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
+    if(!entries.length){ list.innerHTML = '<div style="font-size:12px;color:var(--muted)">Hali yangilik yo\u02bbq.</div>'; return; }
+    list.innerHTML = entries.map(([id,n]) => `
+      <div class="news-item">
+        <button class="news-item-del" onclick="deleteNews('${id}')">🗑️</button>
+        <div class="news-item-title">${n.title||''}</div>
+        <div class="news-item-text">${n.text||''}</div>
+      </div>`).join('');
+  });
+}
+window.postNews = function(){
+  const title = document.getElementById('news-title').value.trim();
+  const text = document.getElementById('news-text').value.trim();
+  if(!title || !text){ showToast('⚠️ Sarlavha va matn kiriting'); return; }
+  db.ref('businesses/'+currentUid+'/news').push({title, text, createdAt: Date.now()}).then(() => {
+    document.getElementById('news-title').value = '';
+    document.getElementById('news-text').value = '';
+    showToast('✅ E\u02bblon qilindi');
+  });
+};
+window.deleteNews = function(id){
+  if(!confirm("O'chirishni xohlaysizmi?")) return;
+  db.ref('businesses/'+currentUid+'/news/'+id).remove();
+};
+</script>
+</body>
+</html>
