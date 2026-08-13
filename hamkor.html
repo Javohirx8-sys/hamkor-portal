@@ -10,6 +10,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root{
   --bg:#f2f4f7;--white:#fff;--s2:#f0f2f5;
@@ -75,6 +77,36 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;}
 @keyframes sp{to{transform:rotate(360deg)}}
 .hidden{display:none !important;}
+
+/* ── DASHBOARD (kirgandan keyingi yangi dizayn) ── */
+.dash-header{background:linear-gradient(135deg,var(--green),var(--green-d));border-radius:var(--r);padding:20px 18px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;}
+.dash-header-top{display:flex;align-items:center;gap:12px;}
+.dash-avatar{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;overflow:hidden;}
+.dash-avatar img{width:100%;height:100%;object-fit:cover;}
+.dash-name{font-size:16px;font-weight:800;}
+.dash-status-line{font-size:12px;opacity:.9;margin-top:2px;}
+
+.tabbar{display:flex;background:var(--white);border-radius:14px;padding:4px;margin-bottom:16px;box-shadow:var(--sh);}
+.tabbar-item{flex:1;text-align:center;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
+.tabbar-item.active{background:var(--green);color:#fff;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* ── XARITA TANLAGICH ── */
+.map-search-box{display:flex;gap:6px;margin-bottom:8px;}
+.map-search-box input{flex:1;}
+.map-search-results{background:var(--white);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;display:none;}
+.map-search-results.show{display:block;}
+.map-search-result-item{padding:9px 12px;font-size:12px;border-bottom:1px solid var(--border);cursor:pointer;}
+.map-search-result-item:last-child{border-bottom:none;}
+.map-search-result-item:hover{background:var(--s2);}
+#biz-map{width:100%;height:220px;border-radius:14px;margin-bottom:8px;border:1px solid var(--border);}
+
+/* ── BRONLAR ── */
+.booking-item{background:var(--white);border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh);display:flex;justify-content:space-between;align-items:center;}
+.booking-item-date{font-size:13px;font-weight:800;}
+.booking-item-name{font-size:11px;color:var(--muted);margin-top:2px;}
+.booking-empty{text-align:center;color:var(--muted);font-size:12px;padding:30px 0;}
 </style>
 </head>
 <body>
@@ -121,82 +153,121 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
     <!-- ═══ ASOSIY PANEL (kirgandan keyin) ═══ -->
     <div id="main-screen" class="hidden">
 
-      <div class="status-card" id="status-card">
-        <div class="status-badge pending" id="status-badge">⏳ Yuklanmoqda...</div>
-        <div class="status-msg" id="status-msg"></div>
-      </div>
-
-      <!-- Profil to'ldirish/tahrirlash formasi -->
-      <div class="form-card" id="profile-form-card">
-        <div class="form-title">📋 Faoliyat ma'lumotlari</div>
-
-        <div class="field">
-          <label>Nomi</label>
-          <input type="text" id="biz-name" placeholder="Faoliyat nomi">
-        </div>
-        <div class="field">
-          <label>Turi</label>
-          <select id="biz-type">
-            <option value="choyxona">🍵 Choyxona</option>
-            <option value="dacha">🏡 Dacha</option>
-            <option value="mehmonxona">🏨 Mehmonxona</option>
-            <option value="restoran">🍽️ Restoran</option>
-            <option value="boshqa">📍 Boshqa</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Tavsif (turistlarga nima haqida so'zlaysiz)</label>
-          <textarea id="biz-desc" placeholder="Xizmatlaringiz, xususiyatlaringiz haqida yozing..."></textarea>
-        </div>
-        <div class="field">
-          <label>Telefon raqami</label>
-          <input type="tel" id="biz-phone" placeholder="+998 90 123 45 67">
-        </div>
-        <div class="field">
-          <label>Manzil (lat, lng)</label>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="biz-lat" placeholder="Latitude" style="flex:1">
-            <input type="text" id="biz-lng" placeholder="Longitude" style="flex:1">
+      <!-- Dashboard boshi -->
+      <div class="dash-header">
+        <div class="dash-header-top">
+          <div class="dash-avatar" id="dash-avatar">🏪</div>
+          <div>
+            <div class="dash-name" id="dash-name">—</div>
+            <div class="dash-status-line" id="dash-status-line">Yuklanmoqda...</div>
           </div>
-          <button type="button" onclick="useMyLocation()" style="margin-top:8px;font-size:11px;font-weight:700;color:var(--green);background:none;border:none;cursor:pointer;">📍 Joriy joylashuvimni ishlatish</button>
         </div>
-
-        <div class="field">
-          <label>Rasmlar</label>
-          <div class="img-row" id="biz-img-preview"></div>
-          <label class="upload-label">
-            📷 Rasm qo'shish
-            <input type="file" accept="image/*" multiple style="display:none" onchange="uploadBizImages(event)">
-          </label>
-          <div class="upload-status" id="img-upload-status"></div>
-        </div>
-
-        <div class="field">
-          <label>Video (ixtiyoriy — YouTube havolasi yoki fayl yuklash)</label>
-          <input type="text" id="biz-video-url" placeholder="https://youtube.com/... (ixtiyoriy)" style="margin-bottom:8px">
-          <label class="upload-label">
-            🎥 Video fayl yuklash
-            <input type="file" accept="video/*" style="display:none" onchange="uploadBizVideo(event)">
-          </label>
-          <div class="upload-status" id="video-upload-status"></div>
-        </div>
-
-        <button class="btn-primary" id="save-profile-btn" onclick="saveBusinessProfile()">✅ Saqlash va yuborish</button>
       </div>
 
-      <!-- Yangiliklar (faqat tasdiqlangandan keyin) -->
-      <div class="form-card hidden" id="news-card">
-        <div class="form-title">📰 Yangiliklar (turistlarga ko'rinadi)</div>
-        <div id="news-list"></div>
-        <div class="field" style="margin-top:12px">
-          <label>Sarlavha</label>
-          <input type="text" id="news-title" placeholder="Masalan: Yangi taom qo'shildi">
+      <!-- Tab navigatsiya -->
+      <div class="tabbar">
+        <div class="tabbar-item active" id="tabbar-profil" onclick="switchDashTab('profil')">📋 Profil</div>
+        <div class="tabbar-item" id="tabbar-bronlar" onclick="switchDashTab('bronlar')">📅 Bronlar</div>
+        <div class="tabbar-item" id="tabbar-yangiliklar" onclick="switchDashTab('yangiliklar')">📰 Yangiliklar</div>
+      </div>
+
+      <!-- ── TAB: PROFIL ── -->
+      <div class="tab-panel active" id="tab-profil">
+        <div class="status-card" id="status-card">
+          <div class="status-badge pending" id="status-badge">⏳ Yuklanmoqda...</div>
+          <div class="status-msg" id="status-msg"></div>
         </div>
-        <div class="field">
-          <label>Matn</label>
-          <textarea id="news-text" placeholder="Yangilik haqida yozing..."></textarea>
+
+        <div class="form-card" id="profile-form-card">
+          <div class="form-title">📋 Faoliyat ma'lumotlari</div>
+
+          <div class="field">
+            <label>Nomi</label>
+            <input type="text" id="biz-name" placeholder="Faoliyat nomi">
+          </div>
+          <div class="field">
+            <label>Turi</label>
+            <select id="biz-type">
+              <option value="choyxona">🍵 Choyxona</option>
+              <option value="dacha">🏡 Dacha</option>
+              <option value="mehmonxona">🏨 Mehmonxona</option>
+              <option value="restoran">🍽️ Restoran</option>
+              <option value="boshqa">📍 Boshqa</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Tavsif (turistlarga nima haqida so'zlaysiz)</label>
+            <textarea id="biz-desc" placeholder="Xizmatlaringiz, xususiyatlaringiz haqida yozing..."></textarea>
+          </div>
+          <div class="field">
+            <label>Telefon raqami</label>
+            <input type="tel" id="biz-phone" placeholder="+998 90 123 45 67">
+          </div>
+
+          <div class="field">
+            <label>Manzil</label>
+            <div class="map-search-box">
+              <input type="text" id="map-search-input" placeholder="Manzilni qidiring (masalan: Parkent markazi)">
+              <button type="button" onclick="searchMapLocation()" style="padding:0 14px;border-radius:10px;border:none;background:var(--green);color:#fff;font-weight:700;cursor:pointer;">🔍</button>
+            </div>
+            <div class="map-search-results" id="map-search-results"></div>
+            <div id="biz-map"></div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button type="button" onclick="useMyLocation()" style="font-size:11px;font-weight:700;color:var(--green);background:none;border:none;cursor:pointer;">📍 Joriy joylashuvimni ishlatish</button>
+              <span style="font-size:11px;color:var(--muted)" id="biz-latlng-display">Xaritada belgilanmagan</span>
+            </div>
+            <input type="hidden" id="biz-lat">
+            <input type="hidden" id="biz-lng">
+          </div>
+
+          <div class="field">
+            <label>Rasmlar (maksimal 8 ta)</label>
+            <div class="img-row" id="biz-img-preview"></div>
+            <label class="upload-label" id="img-upload-label">
+              📷 Rasm qo'shish
+              <input type="file" accept="image/*" multiple style="display:none" onchange="uploadBizImages(event)">
+            </label>
+            <div class="upload-status" id="img-upload-status"></div>
+          </div>
+
+          <div class="field">
+            <label>Video (ixtiyoriy — YouTube havolasi yoki fayl yuklash)</label>
+            <input type="text" id="biz-video-url" placeholder="https://youtube.com/... (ixtiyoriy)" style="margin-bottom:8px" onchange="autoSaveVideoUrl()">
+            <label class="upload-label">
+              🎥 Video fayl yuklash
+              <input type="file" accept="video/*" style="display:none" onchange="uploadBizVideo(event)">
+            </label>
+            <div class="upload-status" id="video-upload-status"></div>
+          </div>
+
+          <button class="btn-primary" id="save-profile-btn" onclick="saveBusinessProfile()">✅ Saqlash va yuborish</button>
         </div>
-        <button class="btn-primary" onclick="postNews()">📤 E'lon qilish</button>
+      </div>
+
+      <!-- ── TAB: BRONLAR ── -->
+      <div class="tab-panel" id="tab-bronlar">
+        <div class="form-card">
+          <div class="form-title">📅 Kelgan bronlar</div>
+          <div id="bookings-list"><div class="booking-empty">Yuklanmoqda...</div></div>
+        </div>
+      </div>
+
+      <!-- ── TAB: YANGILIKLAR ── -->
+      <div class="tab-panel" id="tab-yangiliklar">
+        <div class="form-card" id="news-card">
+          <div class="form-title">📰 Yangiliklar (turistlarga ko'rinadi)</div>
+          <div id="news-locked-msg" class="status-msg hidden" style="margin-bottom:12px">Yangilik joylash uchun avval faoliyatingiz tasdiqlanishi kerak.</div>
+          <div id="news-list"></div>
+          <div class="field" style="margin-top:12px">
+            <label>Sarlavha</label>
+            <input type="text" id="news-title" placeholder="Masalan: Yangi taom qo'shildi">
+          </div>
+          <div class="field">
+            <label>Matn</label>
+            <textarea id="news-text" placeholder="Yangilik haqida yozing..."></textarea>
+          </div>
+          <button class="btn-primary" onclick="postNews()">📤 E'lon qilish</button>
+        </div>
       </div>
 
     </div>
@@ -226,6 +297,9 @@ let currentBizData = null;
 let bizImages = [];
 let bizVideoUrl = '';
 let authMode = 'login';
+const MAX_IMAGES = 8;
+let bizMap = null;
+let bizMarker = null;
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -303,6 +377,8 @@ auth.onAuthStateChanged(user => {
     document.getElementById('main-screen').classList.remove('hidden');
     document.getElementById('logout-btn').classList.remove('hidden');
     loadBusinessProfile();
+    loadBookings();
+    setTimeout(initBizMap, 100);
   } else {
     currentUid = null;
     document.getElementById('auth-screen').classList.remove('hidden');
@@ -311,6 +387,15 @@ auth.onAuthStateChanged(user => {
   }
 });
 
+// ── TAB ALMASHTIRISH ──
+window.switchDashTab = function(tab){
+  ['profil','bronlar','yangiliklar'].forEach(t => {
+    document.getElementById('tabbar-'+t).classList.toggle('active', t===tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+  if(tab === 'profil' && bizMap) setTimeout(() => bizMap.invalidateSize(), 150);
+};
+
 // ── PROFILNI YUKLASH ──
 function loadBusinessProfile(){
   db.ref('businesses/'+currentUid).on('value', snap => {
@@ -318,18 +403,31 @@ function loadBusinessProfile(){
     if(!data) return;
     currentBizData = data;
     renderStatus(data);
+    renderDashHeader(data);
     fillForm(data);
     bizImages = data.images || [];
     bizVideoUrl = data.videoUrl || '';
     renderImgPreview();
-    if(data.status === 'approved'){
-      document.getElementById('news-card').classList.remove('hidden');
-      loadNews();
-    } else {
-      document.getElementById('news-card').classList.add('hidden');
-    }
+    if(data.lat && data.lng) setBizLocation(parseFloat(data.lat), parseFloat(data.lng), false);
+    const newsLocked = data.status !== 'approved';
+    document.getElementById('news-locked-msg').classList.toggle('hidden', !newsLocked);
+    document.querySelector('#news-card .btn-primary').style.display = newsLocked ? 'none' : 'block';
+    document.getElementById('news-title').disabled = newsLocked;
+    document.getElementById('news-text').disabled = newsLocked;
+    if(data.status === 'approved') loadNews();
   });
 }
+
+function renderDashHeader(data){
+  setBadgeText('dash-name', data.name || "Faoliyat nomi kiritilmagan");
+  const typeLabels = {choyxona:'🍵 Choyxona', dacha:'🏡 Dacha', mehmonxona:'🏨 Mehmonxona', restoran:'🍽️ Restoran', boshqa:'📍 Boshqa'};
+  const statusTxt = {approved:'✅ Tasdiqlangan', pending:'⏳ Ko\u02bbrib chiqilmoqda', rejected:'❌ Rad etilgan', draft:'📝 To\u02bbldirilmagan'};
+  setBadgeText('dash-status-line', (typeLabels[data.type]||'') + ' · ' + (statusTxt[data.status]||''));
+  const avatar = document.getElementById('dash-avatar');
+  if(data.images && data.images[0]) avatar.innerHTML = `<img src="${data.images[0]}">`;
+  else avatar.textContent = '🏪';
+}
+function setBadgeText(id, txt){ const e = document.getElementById(id); if(e) e.textContent = txt; }
 
 function renderStatus(data){
   const badge = document.getElementById('status-badge');
@@ -366,36 +464,115 @@ function fillForm(data){
 window.useMyLocation = function(){
   if(!navigator.geolocation){ showToast('⚠️ Brauzeringiz joylashuvni qo\u02bbllamaydi'); return; }
   navigator.geolocation.getCurrentPosition(pos => {
-    document.getElementById('biz-lat').value = pos.coords.latitude.toFixed(6);
-    document.getElementById('biz-lng').value = pos.coords.longitude.toFixed(6);
+    setBizLocation(pos.coords.latitude, pos.coords.longitude, true);
     showToast('📍 Joylashuv olindi');
   }, () => showToast('⚠️ Joylashuvni aniqlab bo\u02bblmadi'));
+};
+
+// ── XARITA (Leaflet + OpenStreetMap, bepul, API kalit shart emas) ──
+function initBizMap(){
+  if(bizMap) return;
+  const mapEl = document.getElementById('biz-map');
+  if(!mapEl || typeof L === 'undefined') return;
+  const startLat = (currentBizData && currentBizData.lat) ? parseFloat(currentBizData.lat) : 41.2977;
+  const startLng = (currentBizData && currentBizData.lng) ? parseFloat(currentBizData.lng) : 69.6989;
+  bizMap = L.map('biz-map').setView([startLat, startLng], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(bizMap);
+  bizMap.on('click', e => setBizLocation(e.latlng.lat, e.latlng.lng, true));
+  if(currentBizData && currentBizData.lat && currentBizData.lng){
+    setBizLocation(parseFloat(currentBizData.lat), parseFloat(currentBizData.lng), false);
+  }
+}
+
+function setBizLocation(lat, lng, moveMap){
+  document.getElementById('biz-lat').value = lat.toFixed(6);
+  document.getElementById('biz-lng').value = lng.toFixed(6);
+  document.getElementById('biz-latlng-display').textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
+  if(!bizMap) return;
+  if(bizMarker) bizMap.removeLayer(bizMarker);
+  bizMarker = L.marker([lat, lng]).addTo(bizMap);
+  if(moveMap) bizMap.setView([lat, lng], 15);
+}
+
+window.searchMapLocation = async function(){
+  const q = document.getElementById('map-search-input').value.trim();
+  if(!q) return;
+  const resultsBox = document.getElementById('map-search-results');
+  resultsBox.innerHTML = '<div class="map-search-result-item">Qidirilmoqda...</div>';
+  resultsBox.classList.add('show');
+  try{
+    const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=5&q=' + encodeURIComponent(q + ', Parkent, Uzbekistan'));
+    const results = await res.json();
+    if(!results.length){
+      resultsBox.innerHTML = '<div class="map-search-result-item">Hech narsa topilmadi</div>';
+      return;
+    }
+    resultsBox.innerHTML = results.map((r,i) => `<div class="map-search-result-item" onclick="pickMapResult(${i})">${r.display_name}</div>`).join('');
+    window._mapSearchResults = results;
+  }catch(e){
+    resultsBox.innerHTML = '<div class="map-search-result-item">Qidiruvda xatolik, qayta urinib ko\u02bbring</div>';
+  }
+};
+window.pickMapResult = function(i){
+  const r = window._mapSearchResults[i];
+  if(!r) return;
+  setBizLocation(parseFloat(r.lat), parseFloat(r.lon), true);
+  document.getElementById('map-search-results').classList.remove('show');
+  document.getElementById('map-search-input').value = r.display_name.split(',')[0];
 };
 
 // ── RASM YUKLASH (Firebase Storage) ──
 window.uploadBizImages = function(event){
   const files = Array.from(event.target.files);
   const statusEl = document.getElementById('img-upload-status');
-  statusEl.textContent = `${files.length} ta rasm yuklanmoqda...`;
+  const remaining = MAX_IMAGES - bizImages.length;
+  if(remaining <= 0){
+    showToast('⚠️ Maksimal ' + MAX_IMAGES + ' ta rasm yuklash mumkin');
+    event.target.value = '';
+    return;
+  }
+  const toUpload = files.slice(0, remaining);
+  if(files.length > remaining){
+    showToast('⚠️ Faqat ' + remaining + " ta rasm qo'shildi (limit " + MAX_IMAGES + " ta)");
+  }
+  statusEl.textContent = `${toUpload.length} ta rasm yuklanmoqda...`;
   let done = 0;
-  files.forEach(file => {
+  toUpload.forEach(file => {
     if(file.size > 8*1024*1024){ showToast('⚠️ ' + file.name + ' 8MB dan katta'); done++; return; }
     const ref = storage.ref('businesses/'+currentUid+'/img_'+Date.now()+'_'+file.name);
     ref.put(file).then(snap => snap.ref.getDownloadURL()).then(url => {
       bizImages.push(url);
       done++;
       renderImgPreview();
-      if(done === files.length) statusEl.textContent = `✅ ${bizImages.length} ta rasm`;
+      saveImagesToFirebase(); // ── MUHIM: har bir rasm darhol saqlanadi, "Saqlash" tugmasini bosishni kutmaydi
+      if(done === toUpload.length) statusEl.textContent = `✅ ${bizImages.length}/${MAX_IMAGES} ta rasm saqlandi`;
     }).catch(e => { showToast('❌ Yuklashda xato: ' + e.message); done++; });
   });
+  event.target.value = '';
 };
+
+function saveImagesToFirebase(){
+  if(!currentUid) return;
+  db.ref('businesses/'+currentUid+'/images').set(bizImages).catch(()=>{});
+  const label = document.getElementById('img-upload-label');
+  if(label) label.style.display = bizImages.length >= MAX_IMAGES ? 'none' : 'inline-flex';
+}
+
 function renderImgPreview(){
   const box = document.getElementById('biz-img-preview');
   box.innerHTML = bizImages.map((url,i) => `
     <div class="img-thumb"><img src="${url}"><button onclick="removeBizImage(${i})">✕</button></div>
   `).join('');
+  const label = document.getElementById('img-upload-label');
+  if(label) label.style.display = bizImages.length >= MAX_IMAGES ? 'none' : 'inline-flex';
 }
-window.removeBizImage = function(i){ bizImages.splice(i,1); renderImgPreview(); };
+window.removeBizImage = function(i){
+  bizImages.splice(i,1);
+  renderImgPreview();
+  saveImagesToFirebase();
+};
 
 // ── VIDEO YUKLASH ──
 window.uploadBizVideo = function(event){
@@ -408,8 +585,14 @@ window.uploadBizVideo = function(event){
   ref.put(file).then(snap => snap.ref.getDownloadURL()).then(url => {
     bizVideoUrl = url;
     document.getElementById('biz-video-url').value = url;
-    statusEl.textContent = '✅ Video yuklandi';
+    if(currentUid) db.ref('businesses/'+currentUid+'/videoUrl').set(url).catch(()=>{});
+    statusEl.textContent = '✅ Video yuklandi va saqlandi';
   }).catch(e => { statusEl.textContent = ''; showToast('❌ Video yuklashda xato: ' + e.message); });
+};
+window.autoSaveVideoUrl = function(){
+  const url = document.getElementById('biz-video-url').value.trim();
+  bizVideoUrl = url;
+  if(currentUid) db.ref('businesses/'+currentUid+'/videoUrl').set(url).catch(()=>{});
 };
 
 // ── PROFILNI SAQLASH ──
@@ -446,6 +629,35 @@ window.saveBusinessProfile = function(){
 };
 
 // ── YANGILIKLAR ──
+// ── BRONLAR ──
+function loadBookings(){
+  if(!currentUid) return;
+  db.ref('businesses/'+currentUid+'/bookings').on('value', snap => {
+    const data = snap.val() || {};
+    const list = document.getElementById('bookings-list');
+    if(!list) return;
+    const entries = Object.values(data).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+    if(!entries.length){
+      list.innerHTML = '<div class="booking-empty">Hozircha bronlar yo\u02bbq.</div>';
+      return;
+    }
+    const today = new Date().toISOString().slice(0,10);
+    list.innerHTML = entries.map(b => `
+      <div class="booking-item">
+        <div>
+          <div class="booking-item-date">${formatBookingDate(b.date)} · ${b.time}</div>
+          <div class="booking-item-name">👤 ${b.userName || 'Mehmon'}</div>
+        </div>
+        ${b.date < today ? '<span style="font-size:10px;color:var(--muted)">O\u02bbtgan</span>' : '<span style="font-size:10px;color:var(--green);font-weight:700">Yaqinlashmoqda</span>'}
+      </div>`).join('');
+  });
+}
+function formatBookingDate(dateStr){
+  if(!dateStr) return '';
+  const [y,m,d] = dateStr.split('-');
+  return d + '.' + m + '.' + y;
+}
+
 function loadNews(){
   db.ref('businesses/'+currentUid+'/news').on('value', snap => {
     const data = snap.val() || {};
