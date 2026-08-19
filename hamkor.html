@@ -153,6 +153,15 @@ body.auth-active .content{padding:0;}
 .booking-item-date{font-size:13px;font-weight:800;}
 .booking-item-name{font-size:11px;color:var(--muted);margin-top:2px;}
 .booking-empty{text-align:center;color:var(--muted);font-size:12px;padding:30px 0;}
+.product-item{display:flex;justify-content:space-between;align-items:center;background:var(--s2);border-radius:10px;padding:9px 12px;margin-bottom:6px;}
+.product-item-name{font-size:13px;font-weight:700;}
+.product-item-price{font-size:12px;color:var(--green);font-weight:800;}
+.product-item-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;margin-left:10px;}
+.booking-detail-line{font-size:11px;color:var(--text2);margin-top:4px;}
+.booking-accept-btn{background:var(--green);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.booking-status-tag{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;}
+.booking-status-tag.pending{background:var(--orange-l);color:var(--orange);}
+.booking-status-tag.accepted{background:var(--green-l);color:var(--green-d);}
 </style>
 </head>
 <body class="auth-active">
@@ -252,6 +261,10 @@ body.auth-active .content{padding:0;}
             <div class="dash-status-line" id="dash-status-line">Yuklanmoqda...</div>
           </div>
         </div>
+        <div id="dash-orders-pill" class="hidden" onclick="switchDashTab('bronlar')" style="margin-top:12px;background:rgba(255,255,255,.18);border-radius:12px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+          <span>🔔 Yangi buyurtmalar</span>
+          <span id="dash-orders-count" style="background:#fff;color:var(--green-d);padding:2px 10px;border-radius:20px;font-weight:800;">0</span>
+        </div>
       </div>
 
       <!-- Tab navigatsiya -->
@@ -332,12 +345,38 @@ body.auth-active .content{padding:0;}
 
           <button class="btn-primary" id="save-profile-btn" onclick="saveBusinessProfile()">✅ Saqlash va yuborish</button>
         </div>
+
+        <!-- Bron sozlamalari (turga qarab) -->
+        <div class="form-card" id="booking-settings-card">
+          <div class="form-title">⚙️ Bron sozlamalari</div>
+          <div class="field hidden" id="choyxona-hour-field">
+            <label>Qo'shimcha soat narxi (birinchi 2 soat bepul)</label>
+            <input type="number" id="biz-extra-hour-price" placeholder="Masalan: 15000" onchange="autoSaveBookingSettings()">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">so'm / har qo'shimcha soat uchun</div>
+          </div>
+          <div class="field hidden" id="dacha-price-field">
+            <label>Kunlik narx</label>
+            <input type="number" id="biz-daily-price" placeholder="Masalan: 300000" onchange="autoSaveBookingSettings()">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">so'm / kuniga</div>
+          </div>
+        </div>
+
+        <!-- Mahsulotlar / Xizmatlar -->
+        <div class="form-card">
+          <div class="form-title">🍽️ Mahsulotlar va xizmatlar</div>
+          <div id="products-list" style="margin-bottom:12px;"></div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="new-product-name" placeholder="Nomi (masalan: Osh)" style="flex:2;border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-family:inherit;font-size:13px;background:var(--s2);color:var(--text)">
+            <input type="number" id="new-product-price" placeholder="Narxi" style="flex:1;border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-family:inherit;font-size:13px;background:var(--s2);color:var(--text)">
+          </div>
+          <button class="btn-primary" style="margin-top:10px" onclick="addProduct()">➕ Qo'shish</button>
+        </div>
       </div>
 
       <!-- ── TAB: BRONLAR ── -->
       <div class="tab-panel" id="tab-bronlar">
         <div class="form-card">
-          <div class="form-title">📅 Kelgan bronlar</div>
+          <div class="form-title">📅 Kelgan buyurtmalar <span id="bookings-pending-badge" style="display:none;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px;"></span></div>
           <div id="bookings-list"><div class="booking-empty">Yuklanmoqda...</div></div>
         </div>
       </div>
@@ -576,7 +615,66 @@ function fillForm(data){
   document.getElementById('biz-lat').value = data.lat || '';
   document.getElementById('biz-lng').value = data.lng || '';
   document.getElementById('biz-video-url').value = data.videoUrl || '';
+  document.getElementById('biz-extra-hour-price').value = data.extraHourPrice || '';
+  document.getElementById('biz-daily-price').value = data.dailyPrice || '';
+  updateBookingSettingsVisibility(data.type || 'choyxona');
+  bizProducts = data.products ? Object.entries(data.products).map(([id,p]) => ({id, ...p})) : [];
+  renderProducts();
 }
+
+function updateBookingSettingsVisibility(type){
+  document.getElementById('choyxona-hour-field').classList.toggle('hidden', type !== 'choyxona');
+  document.getElementById('dacha-price-field').classList.toggle('hidden', type !== 'dacha');
+}
+document.getElementById('biz-type').addEventListener('change', function(){
+  updateBookingSettingsVisibility(this.value);
+});
+
+window.autoSaveBookingSettings = function(){
+  if(!currentUid) return;
+  const extraHourPrice = document.getElementById('biz-extra-hour-price').value;
+  const dailyPrice = document.getElementById('biz-daily-price').value;
+  db.ref('businesses/'+currentUid).update({
+    extraHourPrice: extraHourPrice ? Number(extraHourPrice) : null,
+    dailyPrice: dailyPrice ? Number(dailyPrice) : null
+  }).then(() => showToast('✅ Saqlandi'));
+};
+
+// ── MAHSULOTLAR / XIZMATLAR ──
+let bizProducts = [];
+function renderProducts(){
+  const box = document.getElementById('products-list');
+  if(!box) return;
+  if(!bizProducts.length){
+    box.innerHTML = '<div style="font-size:12px;color:var(--muted)">Hali mahsulot qo\u02bbshilmagan.</div>';
+    return;
+  }
+  box.innerHTML = bizProducts.map(p => `
+    <div class="product-item">
+      <span class="product-item-name">${p.name}</span>
+      <span>
+        <span class="product-item-price">${Number(p.price).toLocaleString()} so'm</span>
+        <button class="product-item-del" onclick="removeProduct('${p.id}')">✕</button>
+      </span>
+    </div>`).join('');
+}
+window.addProduct = function(){
+  const nameEl = document.getElementById('new-product-name');
+  const priceEl = document.getElementById('new-product-price');
+  const name = nameEl.value.trim();
+  const price = priceEl.value;
+  if(!name || !price){ showToast('⚠️ Nomi va narxini kiriting'); return; }
+  if(!currentUid) return;
+  const ref = db.ref('businesses/'+currentUid+'/products').push();
+  ref.set({name, price: Number(price)}).then(() => {
+    nameEl.value = ''; priceEl.value = '';
+    showToast('✅ Qo\u02bbshildi');
+  });
+};
+window.removeProduct = function(id){
+  if(!currentUid) return;
+  db.ref('businesses/'+currentUid+'/products/'+id).remove();
+};
 
 window.useMyLocation = function(){
   if(!navigator.geolocation){ showToast('⚠️ Brauzeringiz joylashuvni qo\u02bbllamaydi'); return; }
@@ -753,20 +851,48 @@ function loadBookings(){
     const data = snap.val() || {};
     const list = document.getElementById('bookings-list');
     if(!list) return;
-    const entries = Object.values(data).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+    const entries = Object.entries(data).map(([id,b]) => ({id, ...b})).sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+    const pendingCount = entries.filter(b => b.status !== 'accepted').length;
+
+    const badge = document.getElementById('bookings-pending-badge');
+    if(badge){
+      if(pendingCount > 0){ badge.textContent = pendingCount + ' yangi'; badge.style.display = 'inline-block'; }
+      else badge.style.display = 'none';
+    }
+    const pill = document.getElementById('dash-orders-pill');
+    const pillCount = document.getElementById('dash-orders-count');
+    if(pill && pillCount){
+      pillCount.textContent = pendingCount;
+      pill.classList.toggle('hidden', pendingCount === 0);
+    }
+
     if(!entries.length){
-      list.innerHTML = '<div class="booking-empty">Hozircha bronlar yo\u02bbq.</div>';
+      list.innerHTML = '<div class="booking-empty">Hozircha buyurtmalar yo\u02bbq.</div>';
       return;
     }
-    const today = new Date().toISOString().slice(0,10);
-    list.innerHTML = entries.map(b => `
-      <div class="booking-item">
-        <div>
-          <div class="booking-item-date">${formatBookingDate(b.date)} · ${b.time}</div>
-          <div class="booking-item-name">👤 ${b.userName || 'Mehmon'}</div>
+    list.innerHTML = entries.map(b => {
+      let detailLine = '';
+      if(b.bizType === 'dacha'){
+        detailLine = `📅 ${formatBookingDate(b.date)} · ${b.days||1} kunga`;
+      } else if(b.bizType === 'choyxona'){
+        const itemsTxt = (b.items && b.items.length) ? b.items.map(i=>i.name+' ×'+i.qty).join(', ') : '';
+        detailLine = `📅 ${formatBookingDate(b.date)} · ${2 + (b.extraHours||0)} soat` + (itemsTxt ? `<div class="booking-detail-line">🍽️ ${itemsTxt}</div>` : '');
+      } else {
+        detailLine = `📅 ${formatBookingDate(b.date)} · ${b.time||''}`;
+      }
+      const isPending = b.status !== 'accepted';
+      return `
+      <div class="booking-item" style="align-items:flex-start;flex-direction:column;gap:6px;">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:flex-start;">
+          <div>
+            <div class="booking-item-date">${detailLine}</div>
+            <div class="booking-item-name">👤 ${b.userName || 'Mehmon'}</div>
+          </div>
+          <span class="booking-status-tag ${isPending?'pending':'accepted'}">${isPending?'⏳ Yangi':'✅ Qabul qilingan'}</span>
         </div>
-        ${b.date < today ? '<span style="font-size:10px;color:var(--muted)">O\u02bbtgan</span>' : '<span style="font-size:10px;color:var(--green);font-weight:700">Yaqinlashmoqda</span>'}
-      </div>`).join('');
+        ${isPending ? `<button class="booking-accept-btn" onclick="acceptBooking('${b.id}')">✅ Qabul qilish</button>` : ''}
+      </div>`;
+    }).join('');
   });
 }
 function formatBookingDate(dateStr){
@@ -774,6 +900,27 @@ function formatBookingDate(dateStr){
   const [y,m,d] = dateStr.split('-');
   return d + '.' + m + '.' + y;
 }
+
+window.acceptBooking = function(bookingId){
+  if(!currentUid || !currentBizData) return;
+  const bookingRef = db.ref('businesses/'+currentUid+'/bookings/'+bookingId);
+  bookingRef.once('value').then(snap => {
+    const b = snap.val();
+    if(!b) return;
+    return bookingRef.update({status:'accepted'}).then(() => {
+      if(!b.userId) return;
+      const bizName = currentBizData.name || 'Faoliyatimiz';
+      const dateTxt = formatBookingDate(b.date);
+      const msg = `Assalomu alaykum, ${b.userName||'aziz mehmon'}! ${bizName} sizning ${dateTxt} kungi buyurtmangizni mamnuniyat bilan qabul qildi. Sizni kutib qolamiz, xush kelibsiz! 🌿`;
+      return db.ref('userNotifications/'+b.userId).push({
+        title: '✅ Buyurtmangiz qabul qilindi',
+        body: msg,
+        bizName, createdAt: Date.now(), read: false
+      });
+    });
+  }).then(() => showToast('✅ Qabul qilindi, mehmonga xabar yuborildi'))
+    .catch(e => showToast('❌ Xato: ' + e.message));
+};
 
 function loadNews(){
   db.ref('businesses/'+currentUid+'/news').on('value', snap => {
